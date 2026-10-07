@@ -1,9 +1,12 @@
 # Changelog
 
-## [0.5.0] - 2026-09-15
+## [0.5.0] - 2026-10-07
 
 ### Changed
 
+- Renamed to Sarkastic.gg QoL: the community moved from sarkastic.eu to sarkastic.gg. The DLL is now
+  `SarkasticGG_QoL.dll`; delete `SarkasticEU_QoL.dll` from `BepInEx/plugins` when upgrading. The plugin
+  GUID, the config file `sarkasticeu.qol.cfg` and the files next to it are unchanged.
 - Everything a player might not want is off until switched on. Stations no longer feed
   themselves (`[Feeding] Smelters` false) and doors no longer close by themselves (new
   `[Doors] Default`, false) until a player switches one on; a player sees taming progress and gets

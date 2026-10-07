@@ -240,7 +240,7 @@ namespace SarkasticQoL.Features
 		private static void Save()
 		{
 			CultureInfo ic = CultureInfo.InvariantCulture;
-			StringBuilder text = new StringBuilder("# Sarkastic.eu QoL: deaths of tamed creatures. <utc time> <x> <y> <z> <what happened>\n");
+			StringBuilder text = new StringBuilder("# Sarkastic.gg QoL: deaths of tamed creatures. <utc time> <x> <y> <z> <what happened>\n");
 			foreach (Entry e in s_entries)
 			{
 				text.Append($"{e.at.ToString("o", ic)} {e.pos.x.ToString("R", ic)} {e.pos.y.ToString("R", ic)} {e.pos.z.ToString("R", ic)} {e.text}\n");

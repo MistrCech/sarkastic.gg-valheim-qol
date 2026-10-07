@@ -46,7 +46,7 @@ namespace SarkasticQoL
 
 		private void Save()
 		{
-			List<string> lines = new List<string> { "# Sarkastic.eu QoL: per player, what they switched on (+) or off (-) for themselves. <platform id> +<feature> -<feature> ..." };
+			List<string> lines = new List<string> { "# Sarkastic.gg QoL: per player, what they switched on (+) or off (-) for themselves. <platform id> +<feature> -<feature> ..." };
 			foreach (KeyValuePair<string, Dictionary<string, bool>> entry in chosen)
 			{
 				if (entry.Value.Count > 0)

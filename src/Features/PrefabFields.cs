@@ -51,7 +51,7 @@ namespace SarkasticQoL.Features
 			{
 				File.WriteAllLines(path, new[]
 				{
-					"# Sarkastic.eu QoL: field overrides for player-built pieces. One per line:",
+					"# Sarkastic.gg QoL: field overrides for player-built pieces. One per line:",
 					"# <prefab> <Component>.<field> <value>",
 					"# e.g.  piece_workbench CraftingStation.m_rangeBuild 20",
 					"#       fire_pit Fireplace.m_secPerFuel 0",

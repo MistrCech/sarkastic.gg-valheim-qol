@@ -19,7 +19,7 @@ namespace SarkasticQoL
 	public class QoLPlugin : BaseUnityPlugin
 	{
 		public const string GUID = "sarkasticeu.qol";
-		public const string PluginName = "Sarkastic.eu QoL";
+		public const string PluginName = "Sarkastic.gg QoL";
 		public const string PluginVersion = "0.5.0";
 
 		internal static ManualLogSource Log;

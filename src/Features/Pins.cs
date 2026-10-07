@@ -1178,7 +1178,7 @@ namespace SarkasticQoL.Features
 		{
 			s_saveDue = false;
 			CultureInfo ic = CultureInfo.InvariantCulture;
-			List<string> lines = new List<string> { "# Sarkastic.eu QoL map pins: pin|removed <category> <prefab> <x> <y> <z> <count> <icon> <object id> <name>; sent <player> <pin key>" };
+			List<string> lines = new List<string> { "# Sarkastic.gg QoL map pins: pin|removed <category> <prefab> <x> <y> <z> <count> <icon> <object id> <name>; sent <player> <pin key>" };
 			foreach (Pin pin in s_pins)
 			{
 				lines.Add(Line("pin", pin, ic));

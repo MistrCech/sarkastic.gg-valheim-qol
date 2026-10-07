@@ -21,7 +21,7 @@ namespace SarkasticQoL
 				return;
 			}
 			s_registered = true;
-			new Terminal.ConsoleCommand("qol", "Sarkastic.eu QoL: qol status | reload | set <Section.Key> <value> | containers | pins | deaths | help",
+			new Terminal.ConsoleCommand("qol", "Sarkastic.gg QoL: qol status | reload | set <Section.Key> <value> | containers | pins | deaths | help",
 				delegate (Terminal.ConsoleEventArgs args)
 				{
 					foreach (string line in Run(args).Split('\n'))

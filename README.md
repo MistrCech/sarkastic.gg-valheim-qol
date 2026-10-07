@@ -1,4 +1,4 @@
-# Sarkastic.eu QoL
+# Sarkastic.gg QoL
 
 A server-side [BepInEx](https://github.com/BepInEx/BepInEx) plugin for Valheim 1.0 dedicated servers:
 small conveniences for the players, none of them needing anything on the client. Nothing a player
@@ -165,10 +165,10 @@ features; a few thousand at most, and nothing is changed unless something differ
 ## Installation
 
 1. Install [BepInExPack_Valheim](https://thunderstore.io/c/valheim/p/denikson/BepInExPack_Valheim/) 5.4.2350 or newer on the dedicated server.
-2. Copy `SarkasticEU_QoL.dll` from the latest release into `BepInEx/plugins/`.
-3. Restart the server. `BepInEx/LogOutput.log` shows `Sarkastic.eu QoL running`.
+2. Copy `SarkasticGG_QoL.dll` from the latest release into `BepInEx/plugins/`.
+3. Restart the server. `BepInEx/LogOutput.log` shows `Sarkastic.gg QoL running`.
 
-Made for the Sarkastic.eu server together with
+Made for the Sarkastic.gg server together with
 [Dedicated Simulation](https://github.com/MistrCech/valheim-serverside) (the server simulates the
 world around players, admin console) and
 [Resource Regrowth](https://github.com/MistrCech/valheim-resource-regrowth) (one-time world content
@@ -176,5 +176,5 @@ comes back). Each works on its own.
 
 ## Building
 
-`dotnet build src/SarkasticEU_QoL.csproj -c Release` with `VALHEIM_DEDI_INSTALL` pointing at a
+`dotnet build src/SarkasticGG_QoL.csproj -c Release` with `VALHEIM_DEDI_INSTALL` pointing at a
 dedicated server install that has BepInEx. The game assemblies are publicized at build time.
