@@ -73,12 +73,18 @@ namespace SarkasticQoL
 			Settings s = QoLPlugin.Settings;
 			return $"{QoLPlugin.PluginName} {QoLPlugin.PluginVersion}: chat prefix '{s.ChatPrefix.Value}'"
 				+ $" | sleep {(s.SleepEnabled.Value ? $"{s.SleepRequiredPercent.Value}%, min {s.SleepMinInBed.Value}, warn {s.SleepWarnSeconds.Value} s" : "off")}"
-				+ $" | doors {(s.DoorsEnabled.Value ? $"close after {s.DoorsCloseAfterSeconds.Value:0} s" : "off")}"
+				+ $" | doors {(s.DoorsEnabled.Value ? $"close after {s.DoorsCloseAfterSeconds.Value:0} s, default {OnOff(s.DoorsDefault.Value)}" : "off")}"
 				+ $" | ballistas {(s.BallistasEnabled.Value ? $"players {s.BallistasTargetPlayers.Value}, tames {s.BallistasTargetTames.Value}" : "off")}"
-				+ $" | tame progress {(s.TamesProgress.Value ? "on" : "off")}"
+				+ $" | feeding {(s.FeedEnabled.Value ? $"stations default {OnOff(s.FeedSmelters.Value)}, fires default {OnOff(s.FeedFireplaces.Value)}" : "off")}"
+				+ $" | tame progress {(s.TamesProgress.Value ? $"default {OnOff(s.TamesProgressDefault.Value)}" : "off")}"
 				+ $" | containers {(s.ContainersEnabled.Value ? "on" : "off")} | prefabs {(s.PrefabsEnabled.Value ? "on" : "off")}"
 				+ $" | motd {(s.MotdText.Value.Length > 0 ? "set" : "empty")}"
-				+ $" | pins {(s.PinsEnabled.Value ? $"{Pins.Count} on {Pins.TableCount} tables" : "off")}";
+				+ $" | pins {(s.PinsEnabled.Value ? $"default {OnOff(s.PinsDefault.Value)}, {Pins.Count} known, on {Pins.TableCount} tables" : "off")}";
+		}
+
+		private static string OnOff(bool on)
+		{
+			return on ? "on" : "off";
 		}
 
 		private static string Set(string key, string value)

@@ -28,7 +28,6 @@ namespace SarkasticQoL
 	*/
 	internal static class Commands
 	{
-		private const float Reach = 5f;
 		private static readonly int SayHash = "Say".GetStableHashCode();
 		private static readonly int ChatMessageHash = "ChatMessage".GetStableHashCode();
 		private static long s_lastSender;
@@ -243,7 +242,7 @@ namespace SarkasticQoL
 				case "fire":
 					return words.Length >= 2 && words[1] == "feed"
 						? PieceToggle(peer, World.Kind.Fireplace, "fire", Feeding.FeedKey, words, 2, z => Feeding.Wanted(z, World.Kind.Fireplace), "feeds itself from containers nearby")
-						: "Usage: fire feed on|off (the fire next to you)";
+						: "Usage: fire feed on|off (the fire you look at)";
 				case "label":
 					return Label(peer, words);
 				case "clock":
@@ -264,7 +263,7 @@ namespace SarkasticQoL
 
 		private static string Help(string p)
 		{
-			string help = $"{p}sleep (vote to skip the night) | next to a piece: {p}ballista players|tames on|off, {p}door auto on|off, {p}feed on|off, {p}fire feed on|off, {p}label on|off (chest named after its contents), {p}sort on|off, {p}clock on|off | {p}tame on|off | {p}pins on|off|reset (pins on your map for what you come near) | {p}deaths [n] (what killed the tamed animals)";
+			string help = $"{p}sleep (vote to skip the night) | looking at a piece: {p}ballista players|tames on|off, {p}door auto on|off, {p}feed on|off, {p}fire feed on|off, {p}label on|off (chest named after its contents), {p}sort on|off, {p}clock on|off (under a ward only if it lets you in) | for you: {p}tame on|off, {p}pins on|off|reset (pins on your map for what you come near) | {p}deaths [n] (what killed the tamed animals). All off until switched on";
 			return ServerPresence.Enabled ? help : help + $" -- {p}commands reach the server only while another player is online";
 		}
 
@@ -298,12 +297,25 @@ namespace SarkasticQoL
 			return SleepVote.Vote(peer, null);
 		}
 
+		// The piece of that kind the player looks at; null with the reply in `why`.
+		private static ZDO Target(ZNetPeer peer, World.Kind kind, string what, out string why)
+		{
+			ZDO piece = World.Looked(peer, kind);
+			why = piece == null ? $"Look at the {what} (as close as you would open it) and type it again" : null;
+			return piece;
+		}
+
+		private static string Warded(string what)
+		{
+			return $"This {what} is under a ward that does not let you in";
+		}
+
 		private static string Ballista(ZNetPeer peer, string[] words)
 		{
-			ZDO turret = World.Nearest(peer, World.Kind.Turret, Reach);
+			ZDO turret = Target(peer, World.Kind.Turret, "ballista", out string why);
 			if (turret == null)
 			{
-				return $"No ballista within {Reach:0} m of you";
+				return why;
 			}
 			Settings s = QoLPlugin.Settings;
 			if (words.Length < 3 || OnOff(words[2]) == null || (words[1] != "players" && words[1] != "tames"))
@@ -311,6 +323,10 @@ namespace SarkasticQoL
 				bool players = Ballistas.Wanted(turret, Ballistas.PlayersKey, s.BallistasTargetPlayers.Value);
 				bool tames = Ballistas.Wanted(turret, Ballistas.TamesKey, s.BallistasTargetTames.Value);
 				return $"This ballista shoots at players: {(players ? "on" : "off")}, tames: {(tames ? "on" : "off")}. Change with ballista players|tames on|off";
+			}
+			if (!World.MayChange(peer, turret))
+			{
+				return Warded("ballista");
 			}
 			bool on = OnOff(words[2]).Value;
 			turret.Set(words[1] == "players" ? Ballistas.PlayersKey : Ballistas.TamesKey, on ? 1 : 0);
@@ -321,32 +337,40 @@ namespace SarkasticQoL
 
 		private static string Door(ZNetPeer peer, string[] words)
 		{
-			ZDO door = World.Nearest(peer, World.Kind.Door, Reach);
+			ZDO door = Target(peer, World.Kind.Door, "door", out string why);
 			if (door == null)
 			{
-				return $"No door within {Reach:0} m of you";
+				return why;
 			}
 			bool? on = words.Length >= 3 && words[1] == "auto" ? OnOff(words[2]) : null;
 			if (on == null)
 			{
 				return $"This door closes by itself: {(AutoDoors.Wanted(door) ? "on" : "off")}. Change with door auto on|off";
 			}
+			if (!World.MayChange(peer, door))
+			{
+				return Warded("door");
+			}
 			door.Set(AutoDoors.AutoKey, on.Value);
 			return $"This door closes by itself: {(on.Value ? "on" : "off")}";
 		}
 
-		// on|off for the nearest piece of a kind, stored in the piece; `index` is where on|off sits in the words.
+		// on|off for the piece of a kind the player looks at, stored in the piece; `index` is where on|off sits in the words.
 		private static string PieceToggle(ZNetPeer peer, World.Kind kind, string what, int key, string[] words, int index, Func<ZDO, bool> current, string does)
 		{
-			ZDO piece = World.Nearest(peer, kind, Reach);
+			ZDO piece = Target(peer, kind, what, out string why);
 			if (piece == null)
 			{
-				return $"No {what} within {Reach:0} m of you";
+				return why;
 			}
 			bool? on = words.Length > index ? OnOff(words[index]) : null;
 			if (on == null)
 			{
 				return $"This {what} {does}: {(current(piece) ? "on" : "off")}. Change with {string.Join(" ", words, 0, index)} on|off";
+			}
+			if (!World.MayChange(peer, piece))
+			{
+				return Warded(what);
 			}
 			piece.Set(key, on.Value ? 1 : 0);
 			return $"This {what} {does}: {(on.Value ? "on" : "off")}";
@@ -354,15 +378,19 @@ namespace SarkasticQoL
 
 		private static string Label(ZNetPeer peer, string[] words)
 		{
-			ZDO chest = World.Nearest(peer, World.Kind.Container, Reach);
+			ZDO chest = Target(peer, World.Kind.Container, "chest", out string why);
 			if (chest == null)
 			{
-				return $"No chest within {Reach:0} m of you";
+				return why;
 			}
 			bool? on = words.Length >= 2 ? OnOff(words[1]) : null;
 			if (on == null)
 			{
 				return $"This chest is named after its contents: {(Labels.Wanted(chest) ? "on" : "off")}. Change with label on|off";
+			}
+			if (!World.MayChange(peer, chest))
+			{
+				return Warded("chest");
 			}
 			chest.Set(Labels.LabelKey, on.Value);
 			return on.Value ? "This chest is named after its contents in a moment (close it first)" : "This chest gets its own name back in a moment";

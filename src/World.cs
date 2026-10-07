@@ -9,7 +9,8 @@ namespace SarkasticQoL
 		The scan: every ScanSeconds, for one player per frame, the objects in the zones around
 		them (3x3, the zones a client has loaded) are handed to the features that care about
 		their kind. A few thousand objects at most per player; the features do nothing unless
-		something needs changing. Also finds pieces near a player for the chat commands.
+		something needs changing. Also finds the piece a player looks at for the chat commands,
+		and whether a ward lets them change it.
 	*/
 	internal static class World
 	{
@@ -57,6 +58,7 @@ namespace SarkasticQoL
 			Portal = 4096,
 			MapTable = 8192,
 			PinObject = 16384, // a prefab named in the pins' lists (berries, ore deposits)
+			Ward = 32768,
 		}
 
 		// Adds a kind to a prefab's, for the objects a feature picks by name (the pins' lists) rather than by component.
@@ -91,6 +93,7 @@ namespace SarkasticQoL
 				if (prefab.GetComponent<LocationProxy>()) kind |= Kind.Location;
 				if (prefab.GetComponent<TeleportWorld>()) kind |= Kind.Portal;
 				if (prefab.GetComponent<MapTable>()) kind |= Kind.MapTable;
+				if (prefab.GetComponent<PrivateArea>()) kind |= Kind.Ward;
 				if (kind != Kind.None)
 				{
 					s_kinds[prefab.name.GetStableHashCode()] = kind;
@@ -229,28 +232,138 @@ namespace SarkasticQoL
 			return false;
 		}
 
-		// The nearest object of that kind within the distance of a player, for the chat commands.
-		public static ZDO Nearest(ZNetPeer peer, Kind kind, float distance)
+		private static readonly RaycastHit[] s_hits = new RaycastHit[32];
+		private static int s_lookMask;
+		private static float s_reach;
+
+		// How far a player reaches with the use key: the Player prefab's m_maxInteractDistance (3.5 m in 1.0).
+		public static float Reach
 		{
-			Vector3 at = Position(peer);
-			List<ZDO> list = new List<ZDO>();
-			ZDOMan.instance.FindSectorObjects(ZoneSystem.GetZone(at), s_zonesAround, list);
-			ZDO best = null;
-			float bestSq = distance * distance;
-			foreach (ZDO zdo in list)
+			get
 			{
-				if ((KindOf(zdo) & kind) == 0)
+				if (s_reach <= 0f)
+				{
+					GameObject prefab = ZNetScene.instance ? ZNetScene.instance.GetPrefab("Player") : null;
+					Player player = prefab ? prefab.GetComponent<Player>() : null;
+					s_reach = player ? player.m_maxInteractDistance : 3.5f;
+				}
+				return s_reach;
+			}
+		}
+
+		/*
+			The object of that kind the player is looking at, for the chat commands: what their
+			crosshair is on. A client writes where its player looks (a point 100 m ahead of the
+			eyes, s_lookTarget) into the player's data five times a second, so that the other
+			clients can turn the head. The first thing a ray from the eyes towards that point meets,
+			if it is within Reach of the eyes, is the answer -- the game's own hover check
+			(Player.FindHoverObject), with the ray from the eyes instead of the camera behind the
+			player. Chat typing freezes the camera, so the look stays on the object while the player
+			types. Null: nothing, or something else.
+		*/
+		public static ZDO Looked(ZNetPeer peer, Kind kind)
+		{
+			ZDO character = ZDOMan.instance.GetZDO(peer.m_characterID);
+			Vector3 target = character != null ? character.GetVec3(ZDOVars.s_lookTarget, Vector3.zero) : Vector3.zero;
+			if (target == Vector3.zero)
+			{
+				return null;
+			}
+			GameObject body = ZNetScene.instance.FindInstance(peer.m_characterID);
+			Player player = body ? body.GetComponent<Player>() : null;
+			Vector3 eye = player && player.m_eye ? player.m_eye.position : character.GetPosition() + Vector3.up * 1.6f;
+			Vector3 direction = target - eye;
+			if (direction.sqrMagnitude < 1f)
+			{
+				return null;
+			}
+			if (s_lookMask == 0)
+			{
+				// Player.m_interactMask
+				s_lookMask = LayerMask.GetMask("item", "piece", "piece_nonsolid", "Default", "static_solid", "Default_small", "character", "character_net", "terrain", "vehicle", "character_ghost");
+			}
+			int count = Physics.RaycastNonAlloc(eye, direction.normalized, s_hits, Reach + 2f, s_lookMask);
+			Array.Sort(s_hits, 0, count, ByDistance.Instance);
+			for (int i = 0; i < count; i++)
+			{
+				Collider collider = s_hits[i].collider;
+				if (body && collider.attachedRigidbody && collider.attachedRigidbody.gameObject == body)
 				{
 					continue;
 				}
-				float sq = (zdo.GetPosition() - at).sqrMagnitude;
-				if (sq < bestSq)
+				Hoverable hoverable = collider.GetComponentInParent<Hoverable>();
+				if (s_hits[i].distance >= Reach + (hoverable != null ? hoverable.GetHoverOffset() : 0f))
 				{
-					bestSq = sq;
-					best = zdo;
+					return null;
+				}
+				ZNetView view = collider.GetComponentInParent<ZNetView>();
+				ZDO zdo = view && view.IsValid() ? view.GetZDO() : null;
+				return zdo != null && (KindOf(zdo) & kind) != 0 ? zdo : null;
+			}
+			return null;
+		}
+
+		private class ByDistance : IComparer<RaycastHit>
+		{
+			public static readonly ByDistance Instance = new ByDistance();
+
+			public int Compare(RaycastHit x, RaycastHit y)
+			{
+				return x.distance.CompareTo(y.distance);
+			}
+		}
+
+		public static long PlayerId(ZNetPeer peer)
+		{
+			ZDO character = ZDOMan.instance.GetZDO(peer.m_characterID);
+			return character != null ? character.GetLong(ZDOVars.s_playerID, 0L) : 0L;
+		}
+
+		/*
+			Whether a player may change a piece with a chat command: anyone where no ward stands;
+			under an active ward, whoever the game lets open a chest there -- the ward's owner and
+			the players they added, one ward that lets them in is enough (PrivateArea.CheckAccess).
+			Read from the wards' data, so it holds whether or not the ward is loaded.
+		*/
+		public static bool MayChange(ZNetPeer peer, ZDO piece)
+		{
+			long player = PlayerId(peer);
+			Vector3 at = piece.GetPosition();
+			List<ZDO> list = new List<ZDO>();
+			ZDOMan.instance.FindSectorObjects(ZoneSystem.GetZone(at), s_zonesAround, list);
+			bool warded = false;
+			foreach (ZDO zdo in list)
+			{
+				if ((KindOf(zdo) & Kind.Ward) == 0 || !zdo.GetBool(ZDOVars.s_enabled))
+				{
+					continue;
+				}
+				PrivateArea ward = Fields.PrefabComponent<PrivateArea>(zdo.GetPrefab());
+				if (!ward || Utils.DistanceXZ(zdo.GetPosition(), at) >= ward.m_radius)
+				{
+					continue;
+				}
+				if (player != 0L && (zdo.GetLong(ZDOVars.s_creator) == player || Permitted(zdo, player)))
+				{
+					return true;
+				}
+				warded = true;
+			}
+			return !warded;
+		}
+
+		// PrivateArea.GetPermittedPlayers
+		private static bool Permitted(ZDO ward, long player)
+		{
+			int count = ward.GetInt(ZDOVars.s_permitted);
+			for (int i = 0; i < count; i++)
+			{
+				if (ward.GetLong("pu_id" + i, 0L) == player)
+				{
+					return true;
 				}
 			}
-			return best;
+			return false;
 		}
 
 		public static string PrefabName(ZDO zdo)

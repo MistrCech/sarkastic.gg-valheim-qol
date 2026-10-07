@@ -8,7 +8,8 @@ namespace SarkasticQoL
 	/*
 		Everything is read live: a change made with `qol set` or `qol reload` applies at the next
 		scan, no restart. Per-piece choices players make with chat commands are stored in the piece
-		itself and win over the defaults here.
+		itself and win over the defaults here. Every default a player could want different is off:
+		a player switches a feature on for themselves or for a piece they may change.
 	*/
 	internal class Settings
 	{
@@ -54,6 +55,7 @@ namespace SarkasticQoL
 		public readonly ConfigEntry<bool> SleepShowProgress;
 
 		public readonly ConfigEntry<bool> DoorsEnabled;
+		public readonly ConfigEntry<bool> DoorsDefault;
 		public readonly ConfigEntry<float> DoorsCloseAfterSeconds;
 		public readonly ConfigEntry<float> DoorsPlayerDistance;
 
@@ -62,6 +64,7 @@ namespace SarkasticQoL
 		public readonly ConfigEntry<bool> BallistasTargetTames;
 
 		public readonly ConfigEntry<bool> TamesProgress;
+		public readonly ConfigEntry<bool> TamesProgressDefault;
 		public readonly ConfigEntry<int> TamesProgressStepPercent;
 		public readonly ConfigEntry<float> TamesProgressRange;
 		public readonly ConfigEntry<bool> TamesLogDeaths;
@@ -74,6 +77,7 @@ namespace SarkasticQoL
 		public readonly ConfigEntry<string> PrefabsFile;
 
 		public readonly ConfigEntry<bool> PinsEnabled;
+		public readonly ConfigEntry<bool> PinsDefault;
 		public readonly ConfigEntry<bool> PinsSharedTables;
 		public readonly ConfigEntry<bool> PinsPickables;
 		public readonly ConfigEntry<bool> PinsOres;
@@ -118,10 +122,10 @@ namespace SarkasticQoL
 
 			FeedEnabled = config.Bind("Feeding", "Enabled", true,
 				"Stations feed themselves from player-built containers nearby: ore and fuel for smelters, kilns, windmills, spinning wheels and blast furnaces, fuel for shield generators and (if on) fireplaces.");
-			FeedSmelters = config.Bind("Feeding", "Smelters", true,
-				"Default for smelters, kilns, windmills, spinning wheels, blast furnaces and shield generators. A player changes one station with !feed on|off.");
+			FeedSmelters = config.Bind("Feeding", "Smelters", false,
+				"Default for smelters, kilns, windmills, spinning wheels, blast furnaces and shield generators. A player switches one station on with !feed on, looking at it. On for all would let every station eat the ore and wood in the chests next to it.");
 			FeedFireplaces = config.Bind("Feeding", "Fireplaces", false,
-				"Default for fireplaces, hearths and torches. A player switches one on with !fire feed on. Off by default: every fire in a base would eat the wood in the chests next to it.");
+				"Default for fireplaces, hearths and torches. A player switches one on with !fire feed on, looking at it. Off by default: every fire in a base would eat the wood in the chests next to it.");
 			FeedRange = config.Bind("Feeding", "Range", 4f,
 				"Containers within this many metres of the station are used.");
 			FeedPlayerDistance = config.Bind("Feeding", "PlayerDistance", 4f,
@@ -132,7 +136,7 @@ namespace SarkasticQoL
 				"Show '+N item' above the station to players nearby when it is fed.");
 
 			LabelsEnabled = config.Bind("Labels", "Enabled", true,
-				"A chest named after its contents ('Coal 156', 'Wood 240, Stone 120 +2'), where the game shows the chest's name: when a player looks at it and as the title of the opened chest, in the player's own language. A player switches it on for one chest with !label on.");
+				"A chest named after its contents ('Coal 156', 'Wood 240, Stone 120 +2'), where the game shows the chest's name: when a player looks at it and as the title of the opened chest, in the player's own language. A player switches it on for one chest with !label on, looking at it.");
 			LabelsDefault = config.Bind("Labels", "Default", false,
 				"Every player-built chest is named after its contents unless switched off with !label off.");
 			LabelsMaxItems = config.Bind("Labels", "MaxItems", 3,
@@ -140,14 +144,14 @@ namespace SarkasticQoL
 			LabelsRefreshSeconds = config.Bind("Labels", "RefreshSeconds", 10f,
 				"The game reads a chest's name only when it creates the chest, so a renamed chest is created afresh and blinks for a moment on every client nearby. At most this often per chest, and never while somebody has it open.");
 			ClocksEnabled = config.Bind("Signs", "Clocks", true,
-				"A sign can show the in-game day and time: !clock on next to it.");
+				"A sign can show the in-game day and time: !clock on, looking at it.");
 			ClockStepMinutes = config.Bind("Signs", "ClockStepMinutes", 10,
 				new ConfigDescription("The clock's resolution in game minutes; a smaller step means more frequent sign updates for everyone nearby.", new AcceptableValueRange<int>(1, 60)));
 			ClockFormat = config.Bind("Signs", "ClockFormat", "Day {0} - {1:00}:{2:00}",
 				"{0} day, {1} hour, {2} minute.");
 
 			SortEnabled = config.Bind("Sorting", "Enabled", true,
-				"Chests that keep themselves tidy: stacks merged, items ordered by name, laid out from the top left, whenever the chest changed and nobody has it open. A player switches it on for one chest with !sort on.");
+				"Chests that keep themselves tidy: stacks merged, items ordered by name, laid out from the top left, whenever the chest changed and nobody has it open. A player switches it on for one chest with !sort on, looking at it.");
 			SortDefault = config.Bind("Sorting", "Default", false,
 				"Every player-built chest sorts itself unless switched off with !sort off.");
 
@@ -168,21 +172,25 @@ namespace SarkasticQoL
 				"Tell everyone how many are in bed whenever that number changes.");
 
 			DoorsEnabled = config.Bind("Doors", "Enabled", true,
-				"Close player-built doors (not locked ones) once nobody is near. A player can turn it off for one door with !door auto off.");
+				"Player-built doors (not locked ones) can close by themselves once nobody is near. A player switches it on for one door with !door auto on, looking at it.");
+			DoorsDefault = config.Bind("Doors", "Default", false,
+				"Every player-built door closes by itself unless switched off with !door auto off.");
 			DoorsCloseAfterSeconds = config.Bind("Doors", "CloseAfterSeconds", 3f,
 				"Seconds a door stays open after the last player left its surroundings.");
 			DoorsPlayerDistance = config.Bind("Doors", "PlayerDistance", 4f,
 				"A door with a player within this many metres stays open.");
 
 			BallistasEnabled = config.Bind("Ballistas", "Enabled", true,
-				"Set what player-built ballistas shoot at. A player can change one ballista with !ballista.");
+				"Set what player-built ballistas shoot at (the game has them shoot at players and tamed creatures too). A player changes one ballista with !ballista, looking at it.");
 			BallistasTargetPlayers = config.Bind("Ballistas", "TargetPlayers", false,
-				"Default for new ballistas: shoot at players.");
+				"Default for ballistas nobody set: shoot at players.");
 			BallistasTargetTames = config.Bind("Ballistas", "TargetTames", false,
-				"Default for new ballistas: shoot at tamed creatures.");
+				"Default for ballistas nobody set: shoot at tamed creatures.");
 
 			TamesProgress = config.Bind("Tames", "Progress", true,
-				"Show taming, hatching and growing progress as text above the creature or egg to players nearby. A player can turn it off with !tame off.");
+				"Taming, hatching and growing progress as text above the creature or egg, for the players nearby who switched it on with !tame on.");
+			TamesProgressDefault = config.Bind("Tames", "ProgressDefault", false,
+				"Every player sees the progress unless they switch it off with !tame off.");
 			TamesProgressStepPercent = config.Bind("Tames", "ProgressStepPercent", 5,
 				new ConfigDescription("Show the text again every this many percent.", new AcceptableValueRange<int>(1, 50)));
 			TamesProgressRange = config.Bind("Tames", "ProgressRange", 30f,
@@ -201,7 +209,9 @@ namespace SarkasticQoL
 				"In BepInEx/config. One override per line: <prefab> <Component>.<field> <value>, e.g. piece_workbench CraftingStation.m_rangeBuild 20. Lines starting with # are comments. Applied to objects the game loads; `qol reload` re-reads it.");
 
 			PinsEnabled = config.Bind("Pins", "Enabled", true,
-				"A player's own map gets a pin for what they have been near: clusters of berries and mushrooms, ore deposits, dungeon entrances, portals. Given the way a runestone gives a pin: it is the player's own, theirs to delete, on nobody else's map unless they write a cartography table themselves. Works with vanilla clients.");
+				"A player who switched it on with !pins on gets a pin on their own map for what they have been near: clusters of berries and mushrooms, ore deposits, dungeon entrances, portals. Given the way a runestone gives a pin: it is the player's own, theirs to delete, on nobody else's map unless they write a cartography table themselves. Works with vanilla clients.");
+			PinsDefault = config.Bind("Pins", "Default", false,
+				"Every player gets pins unless they switch them off with !pins off.");
 			PinsSharedTables = config.Bind("Pins", "SharedTables", false,
 				"Also write every pin into every cartography table, so whoever reads a table gets them all (the pins show as another player's; one deleted and written back to a table stays gone). Off: tables are left to the players, and any of our pins in them are taken out.");
 			PinsPickables = config.Bind("Pins", "Pickables", true, "Pins for clusters of the pickables listed in PickableNames.");

@@ -7,8 +7,9 @@ namespace SarkasticQoL.Features
 		A player-built door left open closes once nobody has been within PlayerDistance for
 		CloseAfterSeconds. The door's state lives in its data (0 closed, 1/-1 open); every client
 		animates whatever the data says, so setting it back to 0 closes the door for everyone.
-		Doors that need a key or that the game marks as never closing are left alone, and so is
-		a door a player switched off with !door auto off (stored in the door itself).
+		Doors that need a key or that the game marks as never closing are left alone. Only a door
+		a player switched on with !door auto on (stored in the door itself) closes, unless the
+		config's default is on.
 	*/
 	internal class AutoDoors : IFeature
 	{
@@ -23,7 +24,7 @@ namespace SarkasticQoL.Features
 
 		public static bool Wanted(ZDO door)
 		{
-			return door.GetBool(AutoKey, QoLPlugin.Settings.DoorsEnabled.Value);
+			return door.GetBool(AutoKey, QoLPlugin.Settings.DoorsDefault.Value);
 		}
 
 		public void Visit(ZDO zdo, World.Kind kind, List<ZNetPeer> peers)
@@ -33,7 +34,7 @@ namespace SarkasticQoL.Features
 				clearSince.Remove(zdo.m_uid);
 				return;
 			}
-			if (zdo.GetLong(ZDOVars.s_creator) == 0L || !Wanted(zdo))
+			if (!QoLPlugin.Settings.DoorsEnabled.Value || zdo.GetLong(ZDOVars.s_creator) == 0L || !Wanted(zdo))
 			{
 				return;
 			}

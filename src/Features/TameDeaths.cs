@@ -17,7 +17,8 @@ namespace SarkasticQoL.Features
 		player's, burning, smoke, a fall, drowning, freezing, poison ...) and the attacker's object
 		id, which names the creature -- tamed or wild, with its level -- or the player. A tamed
 		creature taken out of the world while alive (ZNetScene.Destroy on it: a command, another
-		mod) is recorded as well. The latest DeathsKept are kept in a file per world.
+		mod) is recorded as well, except a young one growing up, which the game replaces with the
+		grown animal that way. The latest DeathsKept are kept in a file per world.
 	*/
 	internal static class TameDeaths
 	{
@@ -62,10 +63,17 @@ namespace SarkasticQoL.Features
 					return;
 				}
 				Character character = go.GetComponent<Character>();
-				if (character && !character.IsDead() && character.GetHealth() > 0f && character.IsTamed())
+				if (!character || character.IsDead() || character.GetHealth() <= 0f || !character.IsTamed())
 				{
-					Record(character, "taken out of the world alive (a command or another mod)");
+					return;
 				}
+				// A young animal that grew up is replaced by the grown one: Growup destroys it (not a death).
+				Growup growup = go.GetComponent<Growup>();
+				if (growup && growup.m_baseAI && growup.m_baseAI.GetTimeSinceSpawned().TotalSeconds > growup.m_growTime)
+				{
+					return;
+				}
+				Record(character, "taken out of the world alive (a command or another mod)");
 			}
 		}
 

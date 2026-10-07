@@ -1,5 +1,32 @@
 # Changelog
 
+## [0.5.0] - 2026-09-15
+
+### Changed
+
+- Everything a player might not want is off until switched on. Stations no longer feed
+  themselves (`[Feeding] Smelters` false) and doors no longer close by themselves (new
+  `[Doors] Default`, false) until a player switches one on; a player sees taming progress and gets
+  pins only after `!tame on` / `!pins on` (new `[Tames] ProgressDefault` and `[Pins] Default`,
+  false). A piece or player that was switched explicitly keeps that choice. **An existing config
+  keeps its old values:** after upgrading set `qol set Feeding.Smelters false`.
+- A command for a piece acts on the piece the player looks at, within the game's use distance
+  (3.5 m), instead of the nearest one within 5 m: the client writes where its player looks into
+  the player's data (for the head of the character on the other clients), and the server follows
+  that line from the eyes as the game does from the camera. With two chests side by side the
+  command used to hit either.
+- Who may switch a piece: anyone where no ward stands; under an active ward only its owner and the
+  players they added (the game's own rule for opening chests there). Before, anyone could switch
+  anyone's piece, including a ballista to shoot at players.
+- The per-player file (`sarkasticeu.qol.players.txt`) keeps ons as well as offs (`+pins -tame`);
+  a line from 0.4 reads as before.
+
+### Fixed
+
+- `!deaths` listed a young animal growing up (a chick becoming a hen, a piglet a boar) as a tamed
+  creature "taken out of the world alive": the game replaces it by destroying it. Seen on the live
+  server.
+
 ## [0.4.1] - 2026-09-13
 
 ### Fixed

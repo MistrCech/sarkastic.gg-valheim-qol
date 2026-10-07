@@ -1,12 +1,17 @@
 # Sarkastic.eu QoL
 
 A server-side [BepInEx](https://github.com/BepInEx/BepInEx) plugin for Valheim 1.0 dedicated servers:
-small conveniences for the players, all switchable, none of them needing anything on the client.
+small conveniences for the players, none of them needing anything on the client. Nothing a player
+might not want is on until they switch it on, for themselves or for a piece they look at; what
+applies to the whole server (sleep vote, container sizes, message of the day) is the admin's, set
+from the server console.
 
 - **Sleep by vote:** the night is skipped once half the players (configurable) are in bed, with a
   warning a few seconds before, and a note to everyone whenever the count changes.
-- **Doors close by themselves** once nobody is near (player-built, unlocked doors only).
-- **Ballistas** stop shooting at players and tamed creatures (each ballista can be set on its own).
+- **Doors close by themselves** once nobody is near (player-built, unlocked doors a player
+  switched on).
+- **Ballistas** stop shooting at players and tamed creatures, which the game has them do (each
+  ballista can be set on its own).
 - **Taming, hatching and growing progress** floats above the creature or egg.
 - **Container sizes** per kind of container, from the config, changeable while the server runs.
 - **Field overrides** for any player-built piece from a text file: the range of a crafting
@@ -36,16 +41,24 @@ from **Server** (the name is configurable).
 |---|---|
 | `!help` | Lists the commands. |
 | `!sleep` (or `/sleep`) | Vote to skip the night; again or `!sleep off` withdraws, `!sleep ?` shows the vote. |
-| `!ballista players on\|off`, `!ballista tames on\|off` | The ballista next to you (within 5 m). Without on/off: shows its setting. |
-| `!door auto on\|off` | The door next to you. |
+| `!ballista players on\|off`, `!ballista tames on\|off` | The ballista you look at. Without on/off: shows its setting. |
+| `!door auto on\|off` | The door you look at closes by itself once nobody is near. |
+| `!feed on\|off` | The smelter, kiln, windmill, spinning wheel, blast furnace or shield generator you look at feeds itself from chests within 4 m. |
+| `!fire feed on\|off` | The fireplace, hearth or torch you look at feeds itself from chests within 4 m. |
+| `!label on\|off` | The chest you look at is named after its contents ("Coal 156", "Wood 240, Stone 120, Copper ore 30 +4") when a player looks at it and as the title of the opened chest. It blinks for a moment when the name changes; never while it is open, at most every 10 s. An empty chest, or off, has its own name again. |
+| `!clock on\|off` | The sign you look at shows the day and time ("Day 44 - 19:10"). |
+| `!sort on\|off` | The chest you look at keeps itself sorted: stacks merged, items by name, from the top left. |
 | `!tame on\|off` | Whether you see taming, hatching and growing progress. |
-| `!feed on\|off` | The smelter, kiln, windmill, spinning wheel, blast furnace or shield generator next to you: feed itself from chests within 4 m. On by default. |
-| `!fire feed on\|off` | The fireplace, hearth or torch next to you: feed itself from chests within 4 m. Off by default, since every fire in a base would eat the wood next to it. |
-| `!label on\|off` | The chest next to you is named after its contents ("Coal 156", "Wood 240, Stone 120, Copper ore 30 +4") when a player looks at it and as the title of the opened chest. It blinks for a moment when the name changes; never while it is open, at most every 10 s. An empty chest, or off, has its own name again. |
-| `!clock on\|off` | The sign next to you shows the day and time ("Day 44 - 19:10"). |
-| `!sort on\|off` | The chest next to you keeps itself sorted: stacks merged, items by name, from the top left. |
-| `!deaths [n]` | What killed the tamed creatures: the latest five (up to ten), with the creature or player behind the last blow, or burning, smoke, a fall, drowning ..., how long ago and where. |
 | `!pins on\|off\|reset` | Pins on your own map for what you come near (within 30 m). They are your own pins: delete one and it does not come back; `reset` gives the ones near you once more. |
+| `!deaths [n]` | What killed the tamed creatures: the latest five (up to ten), with the creature or player behind the last blow, or burning, smoke, a fall, drowning ..., how long ago and where. |
+
+Everything is off until switched on: a piece until somebody switches it on, `!tame` and `!pins`
+until the player does (the admin can change these defaults). A command for a piece acts on the
+piece under the player's crosshair, as close as the game's own use key reaches (3.5 m) -- the
+client tells the server where its player looks, so that the others see the head turn. Nearby is not
+enough: look at it and type. Anyone may switch a piece where no ward stands; under an active ward only its owner and
+the players they added, as the game has it for opening chests there. Asking how a piece is set
+(the command without on/off) works for anyone.
 
 How that works: a Valheim client sends its chat only to the players in the player list it got
 from the server, one copy each, never to the server itself. So the plugin lists the server as a
@@ -87,18 +100,20 @@ it; edit the config file and restart instead.
 | `[Chat] Log` | true | Write the players' chat to the server log. |
 | `[Motd] Text`, `DelaySeconds` | empty, 6 | Shown in the middle of the screen after the player's character appears; `\|` breaks a line. |
 | `[Sleep] RequiredPercent`, `MinInBed`, `WarnSeconds`, `ShowProgress` | 50, 1, 10, true | The share of online players that must be in bed, the least number, the warning before the skip, and whether everyone is told when the count changes. |
+| `[Doors] Default` | false | Whether every door closes by itself unless switched off with `!door auto off`. |
 | `[Doors] CloseAfterSeconds`, `PlayerDistance` | 3, 4 | A door closes this long after the last player left this distance. |
 | `[Ballistas] TargetPlayers`, `TargetTames` | false, false | Defaults for ballistas nobody set with `!ballista`. |
-| `[Tames] Progress`, `ProgressStepPercent`, `ProgressRange` | true, 5, 30 | Progress text, how often it repeats, who sees it. |
+| `[Tames] Progress`, `ProgressDefault`, `ProgressStepPercent`, `ProgressRange` | true, false, 5, 30 | Progress text; whether a player who never typed `!tame` sees it, how often it repeats, who sees it. |
 | `[Tames] LogDeaths`, `DeathsKept` | true, 50 | Record what kills tamed creatures (server log and `!deaths`), and how many of the latest to keep. |
 | `[Containers] <prefab>` | the game's size | One entry per buildable container appears once the world is loaded, `WIDTHxHEIGHT`, at most 8 wide. A container is only shrunk when its items fit. |
-| `[Feeding] Smelters`, `Fireplaces` | true, false | Defaults for stations nobody set with `!feed` / `!fire feed`. |
+| `[Feeding] Smelters`, `Fireplaces` | false, false | Defaults for stations nobody set with `!feed` / `!fire feed`. |
 | `[Feeding] Range`, `PlayerDistance`, `LeaveAtLeast`, `ShowText` | 4, 4, 1, true | Chests within Range are used, only when it is below half, never while a player is within PlayerDistance of the station or has the chest open; LeaveAtLeast of each item stays; "+N item" floats above the station. |
 | `[Labels] Default`, `MaxItems`, `RefreshSeconds` | false, 3, 10 | Whether every chest is named after its contents, how many kinds the name lists, how often at most a chest is renamed (each rename creates it afresh: a blink). |
 | `[Signs] ClockStepMinutes`, `ClockFormat` | 10, `Day {0} - {1:00}:{2:00}` | The clock's resolution (a sign update for everyone nearby per step) and text. |
 | `[Sorting] Default` | false | Whether every chest sorts itself. |
 | `[Guards] PersistentEventsAdminOnly` | true | Only admins and the game may start or stop persistent world events (`/pevents`, open to everyone in 1.0.12). |
 | `[Prefabs] File` | `sarkasticeu.qol.prefabs.txt` | One override per line: `<prefab> <Component>.<field> <value>`, e.g. `piece_workbench CraftingStation.m_rangeBuild 20`. |
+| `[Pins] Default` | false | Whether a player who never typed `!pins` gets pins. |
 | `[Pins] SharedTables` | false | Also write every pin into every cartography table, so whoever reads a table gets them all (as another player's pins; one deleted and written back stays gone). Off: the tables are left to the players and any of our pins in them are taken out. |
 | `[Pins] Pickables`, `Ores`, `Dungeons`, `Portals` | true | Which kinds of pin are made. |
 | `[Pins] DiscoverRange` | 30 | A thing is found once a player has been within this many metres of it. |
